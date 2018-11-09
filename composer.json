@@ -1,19 +1,30 @@
 {
-    "name": "clue/json-query",
-    "description": "JSON query language filter in PHP",
-    "keywords": ["JSON query language", "JSON", "filter", "query"],
-    "homepage": "https://github.com/clue/php-json-query",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "Christian Lück",
-            "email": "christian@lueck.tv"
-        }
-    ],
-    "autoload": {
-        "psr-4": { "Clue\\JsonQuery\\": "src/" }
-    },
-    "require": {
-    	"php": ">=5.3"
+  "name": "clue/json-query",
+  "description": "JSON query language filter in PHP",
+  "keywords": [
+    "JSON query language",
+    "JSON",
+    "filter",
+    "query"
+  ],
+  "homepage": "https://github.com/clue/php-json-query",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Christian Lück",
+      "email": "christian@lueck.tv"
     }
+  ],
+  "autoload": {
+    "psr-4": {
+      "Clue\\JsonQuery\\": "src/"
+    }
+  },
+  "require": {
+    "php": ">=7.1",
+    "ext-json": "*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "7.4.*"
+  }
 }

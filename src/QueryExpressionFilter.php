@@ -1,4 +1,4 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Clue\JsonQuery;
 
@@ -6,60 +6,46 @@ use DomainException;
 
 class QueryExpressionFilter implements Filter
 {
+    private const DEFAULT_SELECTOR_SEPARATOR = '.';
+
+    private $selectorSeparator = self::DEFAULT_SELECTOR_SEPARATOR;
+
     private $queryExpression;
-    private $selectorSeparator = '.';
 
-    private $comparators = array();
+    /** @var \Clue\JsonQuery\Comparators */
+    private $comparators;
 
-    public function __construct($queryExpression)
+    public function __construct($queryExpression, $comparators = null)
     {
         $this->queryExpression = $queryExpression;
 
-        $that = $this;
-        $this->comparators = array(
-            '$is' => function ($actualValue, $expectedValue) {
-                return ($actualValue === $expectedValue);
-            },
-            '$in' => function ($actualValue, $expectedValue) {
-                return in_array($actualValue, $expectedValue, true);
-            },
-            '$contains' => function ($actualValue, $expectedValue) use ($that) {
-                if ($that->isObject($actualValue)) {
-                    if (is_object($actualValue)) {
-                        return property_exists($actualValue, $expectedValue);
-                    } else {
-                        return array_key_exists($expectedValue, $actualValue);
-                    }
-                } elseif ($that->isVector($actualValue)) {
-                    return in_array($expectedValue, $actualValue, true);
-                } else {
-                    return (strpos($actualValue, $expectedValue) !== false);
-                }
-            },
-            '$lt' => function ($actualValue, $expectedValue) {
-                return ($actualValue < $expectedValue);
-            },
-            '$lte' => function ($actualValue, $expectedValue) {
-                return ($actualValue <= $expectedValue);
-            },
-            '$gt' => function ($actualValue, $expectedValue) {
-                return ($actualValue > $expectedValue);
-            },
-            '$gte' => function ($actualValue, $expectedValue) {
-                return ($actualValue >= $expectedValue);
-            },
-            '$not' => function ($actualValue, $expectedValue) use ($that) {
-                return !$that->matchComparator($actualValue, $that->isVector($expectedValue) ? '$in' : '$is', $expectedValue);
-            },
-        );
+        if (is_string($comparators)) {
+            if (!class_exists($comparators, true)) {
+                throw new \InvalidArgumentException("Provided Comparator class \"{$comparators}\" or is not auto-loadable");
+            }
+            $comparators = new $comparators;
+        } elseif (null === $comparators) {
+            $comparators = new DefaultComparators();
+        }
+
+        if (!is_object($comparators) || !($comparators instanceof Comparators)) {
+            throw new \InvalidArgumentException(sprintf(
+                'Argument 2 must be instance of %1$s, name of class implementing %1$s, or null to use %2$s.  %3$s provided.',
+                Comparators::class,
+                DefaultComparators::class,
+                is_scalar($comparators) ? (string)$comparators :
+                    (is_object($comparators) ? get_class($comparators) : gettype($comparators))
+            ));
+        }
+        $this->comparators = $comparators;
     }
 
-    public function doesMatch($data)
+    public function doesMatch($data): bool
     {
         return $this->matchFilter($data, $this->queryExpression);
     }
 
-    private function matchFilter($data, $filter)
+    private function matchFilter($data, $filter): bool
     {
         if ($this->isObject($filter)) {
             return $this->matchAnd($data, $filter);
@@ -68,7 +54,7 @@ class QueryExpressionFilter implements Filter
         }
     }
 
-    private function matchOr($data, $filter)
+    private function matchOr($data, $filter): bool
     {
         if ($this->isVector($filter)) {
             foreach ($filter as $element) {
@@ -89,7 +75,7 @@ class QueryExpressionFilter implements Filter
         return false;
     }
 
-    private function matchAnd($data, $filter)
+    private function matchAnd($data, $filter): bool
     {
         if ($this->isVector($filter)) {
             foreach ($filter as $element) {
@@ -110,7 +96,7 @@ class QueryExpressionFilter implements Filter
         return true;
     }
 
-    private function matchValue($data, $column, $expectation)
+    private function matchValue($data, string $column, $expectation): bool
     {
         if ($column === '$and') {
             return $this->matchAnd($data, $expectation);
@@ -126,10 +112,10 @@ class QueryExpressionFilter implements Filter
 
         if ($this->isVector($expectation)) {
             // L2 simple list matching
-            $expectation = array('$in' => $expectation);
+            $expectation = ['$in' => $expectation];
         } elseif (!$this->isObject($expectation)) {
             // L2 simple scalar matching
-            $expectation = array('$is' => $expectation);
+            $expectation = ['$is' => $expectation];
         }
 
         $actualValue = $this->fetchValue($data, $column);
@@ -163,7 +149,7 @@ class QueryExpressionFilter implements Filter
     }
 
     /** @internal */
-    public function matchComparator($actualValue, $comparator, $expectedValue)
+    public function matchComparator($actualValue, string $comparator, $expectedValue): bool
     {
         $negate = false;
         while ($comparator[0] === '!') {
@@ -179,14 +165,14 @@ class QueryExpressionFilter implements Filter
     }
 
     /** @internal */
-    public function isObject($value)
+    public function isObject($value): bool
     {
-        return (is_object($value) || (is_array($value) && ($value === array() || !isset($value[0]))));
+        return (is_object($value) || (is_array($value) && ($value === [] || !isset($value[0]))));
     }
 
     /** @internal */
-    public function isVector($value)
+    public function isVector($value): bool
     {
-        return ($value === array() || (is_array($value) && isset($value[0])));
+        return ($value === [] || (is_array($value) && isset($value[0])));
     }
 }

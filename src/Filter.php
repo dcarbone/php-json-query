@@ -10,5 +10,5 @@ interface Filter
      * @param array|object $object
      * @return boolean
      */
-    public function doesMatch($object);
+    public function doesMatch($object): bool;
 }
